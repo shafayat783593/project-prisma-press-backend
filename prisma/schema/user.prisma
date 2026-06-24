@@ -1,0 +1,25 @@
+
+model User{
+    id String @id @default(uuid())
+    name String @db.VarChar(255)
+    email String @unique 
+    password String
+    activeStatus ActiveStatus @default(ACTIVE)
+    role Role @default(USER)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    profile Profile?
+    @@map("users")
+}
+
+model Profile{
+    id String @id @default(uuid())
+    profilePhoto String?
+    bio String?
+    user User @relation (fields:[userId],references:[id])
+    userId String @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    @@map("profiles")
+}
+
