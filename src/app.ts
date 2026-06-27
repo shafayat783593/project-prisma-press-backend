@@ -4,9 +4,6 @@ import express, { Application, Request, Response } from 'express'
 import cors from 'cors'
 import config from "./config";
 import { prisma } from './lib/prisma';
-import httpStatus from 'http-status';
-import { error } from 'node:console';
-import bcrypt from 'bcryptjs';
 import { userRouter } from './modules/user/user.route';
 import { authRouter } from './modules/auth/auth.route';
 const app:Application = express()

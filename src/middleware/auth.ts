@@ -12,7 +12,7 @@ import { JwtPayload } from "jsonwebtoken";
 declare global {
     namespace Express {
         interface Request {
-            user?:{
+            user?: {
                 email: string,
                 name: string,
                 id: string,
@@ -27,37 +27,37 @@ declare global {
 
 export const auth = (...requiredRoles: string[]) => {
     return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-       const token = req.cookies.accessToken ?
-            req.cookies.accessToken 
+        const token = req.cookies.accessToken ?
+            req.cookies.accessToken
             :
-            req.headers.authorization?.startsWith("Bearer") ? 
-            req.headers.authorization?.split(" ")[1] 
-            : req.headers.authorization;
+            req.headers.authorization?.startsWith("Bearer") ?
+                req.headers.authorization?.split(" ")[1]
+                : req.headers.authorization;
 
         if (!token) {
             throw new Error("You are not logged in . please log in to get access")
         }
         const verifiedToken = await jwtUtils.verifyToken(token, config.jwt_access_secret)
 
-         if (!verifiedToken.success) {
+        if (!verifiedToken.success) {
             throw new Error(verifiedToken.error);
         }
 
-        const { email, name, id, role } = verifiedToken.data as JwtPayload
-
-      if (requiredRoles.length && !requiredRoles.includes(role)) {
-    throw new Error("You do not have permission to perform this action");
-}
+        const { email, id, role } = verifiedToken.data as JwtPayload
+        if (requiredRoles.length && !requiredRoles.includes(role)) {
+            throw new Error("You do not have permission to perform this action");
+        }
 
         const user = await prisma.user.findUnique({
             where: {
                 id,
                 email,
                 role,
-                
+
             }
 
         })
+        console.log("user", user)
         if (!user) {
             throw new Error("User not found")
         }

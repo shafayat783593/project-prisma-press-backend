@@ -9,8 +9,6 @@ const router = Router()
 
 
 
-
-
 router.post("/register", userController.RegisterUser)
 
 router.get("/me", auth(Role.USER), userController.getMyprofile)
