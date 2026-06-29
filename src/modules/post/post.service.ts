@@ -17,6 +17,88 @@ const createPost = async (payload: IcratePostPayload, userId: string) => {
 
 const getAllPosts = async () => {
     const posts = await prisma.post.findMany({
+        //  filtering............................................
+
+        // where: {
+        //     title: "jlfd fosfjsfsdkfjsdjfskdfl",
+        //     content:"Content of the post goes here."
+        // },
+
+
+
+
+        //   searching partial operator.........................
+        // where: {
+        //     OR: [
+        //         {
+        //             title: {
+        //                 contains:"Ron",
+        //                 mode:"insensitive"
+
+        //             },
+
+        //         },
+        //         {
+        //             content: {
+        //                 contains: "Ron",
+        //                 mode:"insensitive"
+        //             }
+        //         }
+        //     ]
+        // }
+
+        // combining serach (Or operator ) and filtering (And).................................................
+
+        where: {
+            //   filterning combining serach (Or operator ) and filtering (And).................................
+
+            AND: [
+                {
+                    // seraching.............
+                    OR: [
+
+                        {
+                            title: {
+                                contains: "Ron",
+                                mode: 'insensitive'
+                            }
+                        },
+                        {
+                            content: {
+                                contains: "ron",
+                                mode: 'insensitive'
+                            }
+                        }
+
+
+                    ]
+                },
+                // filtering ................
+
+
+
+                //  যদি case-insensitive exact match করতে চাও
+
+
+
+                {
+                    title: {
+                        equals: "Ronaldo",
+                        mode: "insensitive",
+                    },
+
+                }
+                ,
+
+                // {
+                //     title: "Ronaldo"
+                // },
+                // {
+                //     content: "Ronaldo"
+                // }
+            ]
+        }
+        ,
         include: {
             author: {
                 omit: { password: true }
@@ -24,7 +106,6 @@ const getAllPosts = async () => {
             comments: true,
 
         }
-
 
     })
     return posts
@@ -188,7 +269,7 @@ const deletePost = async (postId: string, authorId: string, isAdmin: boolean) =>
 const getPostStats = async () => {
     const tranasctionResult = await prisma.$transaction(async (tx) => {
         // .....................manula approch....................................
-        
+
         // const totalPosts = await tx.post.count();
         // const totalDraftPost = await tx.post.count({
         //     where: {
@@ -247,7 +328,7 @@ const getPostStats = async () => {
         // }
 
         const [
-                    totalPosts,
+            totalPosts,
             totalDraftPost,
             totalPublishedPost,
             totalRejectComment,
@@ -255,7 +336,7 @@ const getPostStats = async () => {
             totlaComments,
             totalApprovedComment,
             totalPostviewAggregate,
-       ]= await Promise.all([
+        ] = await Promise.all([
             await tx.post.count(),
 
             await tx.post.count({
@@ -289,15 +370,15 @@ const getPostStats = async () => {
                 }
             }),
             await tx.post.aggregate({
-            _sum: {
-                views: true
+                _sum: {
+                    views: true
 
-            }
-        }),
+                }
+            }),
 
 
-       ])
-         return {
+        ])
+        return {
             totalPosts,
             totalDraftPost,
             totalPublishedPost,
@@ -305,7 +386,7 @@ const getPostStats = async () => {
             totalArchivedPost,
             totlaComments,
             totalApprovedComment,
-          totlaPostviews : totalPostviewAggregate._sum.views
+            totlaPostviews: totalPostviewAggregate._sum.views
 
         }
     })
