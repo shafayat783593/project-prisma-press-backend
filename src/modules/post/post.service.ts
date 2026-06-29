@@ -1,8 +1,10 @@
 import { DEFAULT_CIPHERS } from "node:tls"
-import { IcratePostPayload, IUpdatePostPayload } from "./post.interface"
+import { IcratePostPayload, IPostquery, IUpdatePostPayload } from "./post.interface"
 import { prisma } from "../../lib/prisma"
 import { error } from "node:console"
 import { CommentStatus, PostStatus } from "../../../generated/prisma/enums"
+import { title } from "node:process"
+import { PostWhereInput } from "../../../generated/prisma/models"
 
 const createPost = async (payload: IcratePostPayload, userId: string) => {
     const result = await prisma.post.create({
@@ -15,103 +17,255 @@ const createPost = async (payload: IcratePostPayload, userId: string) => {
     return result
 }
 
-const getAllPosts = async () => {
-    const posts = await prisma.post.findMany({
-        //  filtering............................................
-
-        // where: {
-        //     title: "jlfd fosfjsfsdkfjsdjfskdfl",
-        //     content:"Content of the post goes here."
-        // },
 
 
 
+const getAllPosts = async (query: IPostquery) => {
 
-        //   searching partial operator.........................
-        // where: {
-        //     OR: [
-        //         {
-        //             title: {
-        //                 contains:"Ron",
-        //                 mode:"insensitive"
+    // -------------------------------
+    // Pagination
+    // -------------------------------
 
-        //             },
+    // Number of posts per page (default: 10)
+    const limit = query.limit ? Number(query.limit) : 10
 
-        //         },
-        //         {
-        //             content: {
-        //                 contains: "Ron",
-        //                 mode:"insensitive"
-        //             }
-        //         }
-        //     ]
-        // }
+    // Current page (default: 1)
+    const page = query.page ? Number(query.page) : 1
 
-        // combining serach (Or operator ) and filtering (And).................................................
-
-        where: {
-            //   filterning combining serach (Or operator ) and filtering (And).................................
-
-            AND: [
-                {
-                    // seraching.............
-                    OR: [
-
-                        {
-                            title: {
-                                contains: "Ron",
-                                mode: 'insensitive'
-                            }
-                        },
-                        {
-                            content: {
-                                contains: "ron",
-                                mode: 'insensitive'
-                            }
-                        }
+    // Calculate how many records to skip
+    // Example:
+    // page = 2, limit = 10
+    // skip = (2 - 1) * 10 = 10
+    const skip = (page - 1) * limit
 
 
-                    ]
-                },
-                // filtering ................
+    // -------------------------------
+    // Sorting
+    // -------------------------------
+
+    // Sort field (default: createdAt)
+    const sortBy = query.sortBy ? query.sortBy : "createdAt"
+
+    // Sort order (default: descending)
+    const sortOrder = query.sortOrder ? query.sortOrder : "desc"
 
 
+    // -------------------------------
+    // Tag Parsing
+    // -------------------------------
 
-                //  যদি case-insensitive exact match করতে চাও
+    // Query parameter comes as string
+    // Example:
+    // tag='["React","Node"]'
+    //
+    // Convert string into array
+    const tages = query.tag
+        ? JSON.parse(query.tag as string)
+        : null
+
+    // Ensure parsed value is actually an array
+    const tagesArray = Array.isArray(tages)
+        ? tages
+        : []
+
+console.log("tagesArray",tagesArray)
+    // -------------------------------
+    // Dynamic Filter Conditions
+    // -------------------------------
+
+    // Store all dynamic filters here.
+    // Later these conditions will be used inside Prisma's AND clause.
+    const andCondition: PostWhereInput[] = []
 
 
+    // -------------------------------
+    // Search Filter
+    // -------------------------------
+
+    // Search in title OR content
+    if (query.searchTerm) {
+
+        andCondition.push({
+
+            OR: [
 
                 {
                     title: {
-                        equals: "Ronaldo",
-                        mode: "insensitive",
-                    },
+                        contains: query.searchTerm,
+                        mode: "insensitive"
+                    }
+                },
+
+                {
+                    content: {
+                        contains: query.searchTerm,
+                        mode: "insensitive"
+                    }
+                }
+
+            ]
+
+        })
+
+    }
+
+
+    // -------------------------------
+    // Exact Title Filter
+    // -------------------------------
+
+    if (query.title) {
+
+        andCondition.push({
+
+            title: query.title
+
+        })
+
+    }
+
+
+    // -------------------------------
+    // Exact Content Filter
+    // -------------------------------
+
+    if (query.content) {
+
+        andCondition.push({
+
+            content: query.content
+
+        })
+
+    }
+
+
+    // -------------------------------
+    // Filter By Author
+    // -------------------------------
+
+    if (query.authorId) {
+
+        andCondition.push({
+
+            authorId: query.authorId
+
+        })
+
+    }
+
+
+    // -------------------------------
+    // Featured Posts Filter
+    // -------------------------------
+
+    if (query.isFeatured) {
+
+        andCondition.push({
+
+            // Convert string "true"/"false" into boolean
+            isFeatured: query.isFeatured === "true"
+
+        })
+
+    }
+
+
+    // -------------------------------
+    // Tag Filter
+    // -------------------------------
+
+    // hasSome checks whether at least one tag matches.
+    //
+    // Example:
+    //
+    // Database tags:
+    // ["React","Node","MongoDB"]
+    //
+    // Query:
+    // ["Node","Next"]
+    //
+    // Result:
+    // Match because "Node" exists.
+    if (query.tag) {
+
+        andCondition.push({
+
+            tag: {
+
+                hasSome: tagesArray
+
+            }
+
+        })
+
+    }
+
+
+    // -------------------------------
+    // Status Filter
+    // -------------------------------
+
+    if (query.status) {
+
+        andCondition.push({
+
+            status: query.status
+
+        })
+
+    }
+
+
+    // -------------------------------
+    // Fetch Posts
+    // -------------------------------
+
+    const posts = await prisma.post.findMany({
+
+        // Apply all filters
+        where: {
+
+            AND: andCondition
+
+        },
+
+        // Pagination
+        take: limit,
+        skip: skip,
+
+        // Dynamic Sorting
+        orderBy: {
+
+            [sortBy]: sortOrder
+
+        },
+
+        // Include related data
+        include: {
+
+            // Include author information
+            // Exclude password field
+            author: {
+
+                omit: {
+
+                    password: true
 
                 }
-                ,
 
-                // {
-                //     title: "Ronaldo"
-                // },
-                // {
-                //     content: "Ronaldo"
-                // }
-            ]
-        }
-        ,
-        include: {
-            author: {
-                omit: { password: true }
             },
-            comments: true,
+
+            // Include all comments
+            comments: true
 
         }
 
     })
+
     return posts
 
 }
-
 
 
 const getPostById = async (postId: string) => {

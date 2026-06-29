@@ -17,7 +17,9 @@ const createPost = catchAsync(async (req: Request, res: Response) => {
 })
 
 const getAllPosts = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const result = await postService.getAllPosts()
+    const quary = req.query
+    console.log("quary",quary)
+    const result = await postService.getAllPosts(quary)
     sendResponse(res, {
         success: true,
         message: "Post  Retrived successfully",
