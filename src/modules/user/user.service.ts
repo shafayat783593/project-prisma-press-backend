@@ -11,9 +11,9 @@ const registerUserIntoDB = async (paylod: RegisterUserPayload) => {
     where: { email }
   })
 
-  if (isUserExist) {
-    throw new Error("User with this email already exist");
-  }
+  // if (isUserExist) {
+  //   throw new Error("User with this email already exist");
+  // }
   const hashPassword = await bcrypt.hash(password, Number(config.bcrypt_salt_rounds))
   const createdUser = await prisma.user.create({
     data: {
